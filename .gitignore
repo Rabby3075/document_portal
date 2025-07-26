@@ -1,3 +1,4 @@
 env
 .env
 document_portal.egg-info
+anaconda_projects
