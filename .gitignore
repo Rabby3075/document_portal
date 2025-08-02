@@ -1,4 +1,9 @@
 env
 .env
 document_portal.egg-info
-anaconda_projects
+anaconda_projects\
+vevv/
+__pycache__/
+*.pyc
+logs/
+data/
