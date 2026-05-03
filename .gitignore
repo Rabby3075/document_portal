@@ -4,3 +4,4 @@ document_portal.egg-info
 notebook/
 logs/
 __pycache__/
+data/

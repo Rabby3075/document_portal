@@ -81,7 +81,7 @@ class ModelLoader:
             raise ValueError(f"Unsupported LLM provider: {provider}")
         return llm
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     loader = ModelLoader()
 
     #test embedding model
