@@ -3,3 +3,4 @@ env
 document_portal.egg-info
 notebook/
 logs/
+__pycache__/
