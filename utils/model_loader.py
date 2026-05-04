@@ -50,7 +50,7 @@ class ModelLoader:
         """Loads the LLM model based on the configuration.
         """
         llm_block = self.config["llm"]
-        provider_key = os.getenv("LLM_Provider", "groq") #default to groq if not set
+        provider_key = os.getenv("LLM_Provider", "google") #default to groq if not set
         if provider_key not in llm_block:
             log.error("LLM provider not found in config", provider_key=provider_key)
             raise ValueError(f"LLM provider '{provider_key}' not found in config")
@@ -81,7 +81,7 @@ class ModelLoader:
             raise ValueError(f"Unsupported LLM provider: {provider}")
         return llm
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     loader = ModelLoader()
 
     #test embedding model
