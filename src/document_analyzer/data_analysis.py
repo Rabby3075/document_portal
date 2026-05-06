@@ -1,5 +1,8 @@
 import os
 import sys
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from utils.model_loader import ModelLoader
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocumentPortalCustomException
@@ -14,6 +17,10 @@ class DocumentAnalyzer:
     Automatically logs all actions and handles exceptions gracefully.
     """
 
+    MAX_DIRECT_CHARS = 24000
+    CHUNK_SIZE = 12000
+    CHUNK_OVERLAP = 1000
+
     def __init__(self):
         self.log = CustomLogger().get_logger(__name__)
         try:
@@ -26,6 +33,14 @@ class DocumentAnalyzer:
 
             #promopt
             self.prompt = PROPMT_REGISTRY["document_analysis"]
+            self.summary_prompt = ChatPromptTemplate.from_template("""
+Summarize this document chunk for a final document analysis.
+Keep key facts, title clues, authors, dates, publisher/source, language, page references, sentiment/tone, and the most important content.
+
+Chunk {chunk_number} of {total_chunks}:
+{document_chunk}
+""")
+            self.summary_chain = self.summary_prompt | self.llm | StrOutputParser()
             self.log.info("DocumentAnalyzer initialized successfully.")
 
 
@@ -41,10 +56,11 @@ class DocumentAnalyzer:
             chain = self.prompt | self.llm | self.fixing_parser
             
             self.log.info("Meta-data analysis chain initialized")
+            analysis_text = self._prepare_document_text(document_text)
 
             response = chain.invoke({
                 "format_instructions": self.parser.get_format_instructions(),
-                "document_text": document_text
+                "document_text": analysis_text
             })
 
             self.log.info("Metadata extraction successful", keys=list(response.keys()))
@@ -53,7 +69,41 @@ class DocumentAnalyzer:
 
         except Exception as e:
             self.log.error("Metadata analysis failed", error=str(e))
-            raise DocumentPortalCustomException("Metadata extraction failed") from e
+            raise DocumentPortalCustomException("Metadata extraction failed", sys) from e
+
+    def _prepare_document_text(self, document_text: str) -> str:
+        if len(document_text) <= self.MAX_DIRECT_CHARS:
+            return document_text
+
+        chunks = self._chunk_text(document_text)
+        self.log.info("Document is large, summarizing chunks first", chunks=len(chunks), characters=len(document_text))
+
+        summaries = []
+        for index, chunk in enumerate(chunks, start=1):
+            summary = self.summary_chain.invoke({
+                "chunk_number": index,
+                "total_chunks": len(chunks),
+                "document_chunk": chunk
+            })
+            summaries.append(f"Chunk {index} summary:\n{summary}")
+
+        combined_summary = "\n\n".join(summaries)
+        if len(combined_summary) <= self.MAX_DIRECT_CHARS:
+            return combined_summary
+
+        self.log.info("Combined summaries are still large, condensing once more", characters=len(combined_summary))
+        return self.summary_chain.invoke({
+            "chunk_number": 1,
+            "total_chunks": 1,
+            "document_chunk": combined_summary
+        })
+
+    def _chunk_text(self, text: str) -> list[str]:
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.CHUNK_SIZE,
+            chunk_overlap=self.CHUNK_OVERLAP
+        )
+        return splitter.split_text(text)
 
 
     

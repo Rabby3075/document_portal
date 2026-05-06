@@ -24,9 +24,10 @@ def test_document_comparator():
     act_upload = FakeUpload(act_path)
 
     ref_file, act_file = comparator.save_upload_files(ref_upload, act_upload)
-    combined_docs = comparator.combine_document()
-    print("\n --- Combined Document Preview ---\n")
-    print(combined_docs[:1000])  # Print the first 1000 characters of the combined document
+    combined_docs = comparator.combine_document_pages()
+    print("\n --- Combined Document Page Summary ---\n")
+    for document in combined_docs:
+        print(f"{document['filename']}: {len(document['pages'])} pages")
 
     comparator_llm = DocumentComparatorLLM()
     df = comparator_llm.compare_document(combined_docs)

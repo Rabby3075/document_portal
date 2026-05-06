@@ -23,11 +23,11 @@ class DocumentComparatorIngestion:
     
     def delete_existing_files(self):
         try:
-            if self.data_dir.exists() and self.data_dir.is_dir(): #check if the data directory exists and is a directory
-                for file in self.data_dir.iterdir(): #iterate through all entries in the data directory
+            if self.session_path.exists() and self.session_path.is_dir():
+                for file in self.session_path.iterdir():
                     if file.is_file():
                         file.unlink()
-                        self.log.info("Deleted existing file", directory=str(self.data_dir), file=str(file))
+                        self.log.info("Deleted existing file", directory=str(self.session_path), file=str(file))
         except Exception as e:
             self.log.error("Failed to delete existing files", error=str(e))
             raise DocumentPortalCustomException("Failed to delete existing files", sys) from e
@@ -37,8 +37,8 @@ class DocumentComparatorIngestion:
             # check if the uploaded files already exist in the data directory, if yes delete them before saving new ones
             self.delete_existing_files()
             self.log.info("Existing files deleted successfully, ready to save new uploaded files.")
-            reference_path = self.data_dir/ reference_file.name #updated file
-            actual_path = self.data_dir/ actual_file.name #first version of the file
+            reference_path = self.session_path / reference_file.name
+            actual_path = self.session_path / actual_file.name
             if not reference_file.name.lower().endswith('.pdf') or not actual_file.name.lower().endswith('.pdf'):
                 raise ValueError("Both uploaded files must be PDFs")
             
@@ -74,12 +74,33 @@ class DocumentComparatorIngestion:
         except Exception as e:
             self.log.error("Failed to read PDF", error=str(e))
             raise DocumentPortalCustomException("Failed to read PDF", sys) from e
+
+    def read_pdf_pages(self, file_path:Path)->list[dict]:
+        try:
+            pages = []
+            with fitz.open(file_path) as doc:
+                if doc.is_encrypted:
+                    raise ValueError("PDF is encrypted and cannot be read")
+
+                for page_num in range(doc.page_count):
+                    page = doc.load_page(page_num)
+                    text = page.get_text()
+                    pages.append({
+                        "page": page_num + 1,
+                        "text": text.strip()
+                    })
+            self.log.info("PDF pages read successfully", file_path=str(file_path), pages=len(pages))
+            return pages
+
+        except Exception as e:
+            self.log.error("Failed to read PDF pages", error=str(e))
+            raise DocumentPortalCustomException("Failed to read PDF pages", sys) from e
     
     def combine_document(self)->str:
         try:
             content_dict = {}
             doc_parts = []
-            for filename in sorted(self.data_dir.iterdir()):
+            for filename in sorted(self.session_path.iterdir()):
                 if filename.is_file() and filename.suffix.lower() == ".pdf":
                     content_dict[filename.name] = self.read_pdf(filename)
             for filename, content in content_dict.items():
@@ -90,6 +111,25 @@ class DocumentComparatorIngestion:
         except Exception as e:
             self.log.error("Failed to combine documents", error=str(e))
             raise DocumentPortalCustomException("Failed to combine documents", sys) from e
+
+    def combine_document_pages(self)->list[dict]:
+        try:
+            documents = []
+            for filename in sorted(self.session_path.iterdir()):
+                if filename.is_file() and filename.suffix.lower() == ".pdf":
+                    documents.append({
+                        "filename": filename.name,
+                        "pages": self.read_pdf_pages(filename)
+                    })
+
+            if len(documents) != 2:
+                raise ValueError(f"Expected 2 PDFs for comparison, found {len(documents)}")
+
+            self.log.info("Document pages combined successfully", count=len(documents))
+            return documents
+        except Exception as e:
+            self.log.error("Failed to combine document pages", error=str(e))
+            raise DocumentPortalCustomException("Failed to combine document pages", sys) from e
     
     def clean_old_sessions(self, keep_latest: int = 3):
         """
