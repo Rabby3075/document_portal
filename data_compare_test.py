@@ -25,6 +25,7 @@ def test_document_comparator():
 
     ref_file, act_file = comparator.save_upload_files(ref_upload, act_upload)
     combined_docs = comparator.combine_document_pages()
+    comparator.clean_old_sessions(keep_latest=3)
     print("\n --- Combined Document Page Summary ---\n")
     for document in combined_docs:
         print(f"{document['filename']}: {len(document['pages'])} pages")

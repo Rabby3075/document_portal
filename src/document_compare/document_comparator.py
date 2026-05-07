@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocumentPortalCustomException
 import pandas as pd
-from model.models import *
+from model.models import SummaryResponse,PromptTypes
 from prompt.prompt_library import PROPMT_REGISTRY
 from utils.model_loader import ModelLoader
 from langchain_core.output_parsers import JsonOutputParser
@@ -22,7 +22,7 @@ class DocumentComparatorLLM:
         self.llm = self.loader.load_llm()
         self.parser = JsonOutputParser(pydantic_object=SummaryResponse)
         self.fixing_parser = OutputFixingParser.from_llm(parser = self.parser, llm = self.llm)
-        self.prompt = PROPMT_REGISTRY["document_comparison"]
+        self.prompt = PROPMT_REGISTRY[PromptTypes.DOCUMENT_COMPARISON.value]
         self.chain = self.prompt | self.llm | self.fixing_parser
 
     def compare_document(self, combined_docs)->pd.DataFrame:

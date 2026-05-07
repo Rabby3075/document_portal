@@ -33,13 +33,7 @@ class DocumentAnalyzer:
 
             #promopt
             self.prompt = PROPMT_REGISTRY["document_analysis"]
-            self.summary_prompt = ChatPromptTemplate.from_template("""
-Summarize this document chunk for a final document analysis.
-Keep key facts, title clues, authors, dates, publisher/source, language, page references, sentiment/tone, and the most important content.
-
-Chunk {chunk_number} of {total_chunks}:
-{document_chunk}
-""")
+            self.summary_prompt = PROPMT_REGISTRY["document_analysis_summary_prompt"]
             self.summary_chain = self.summary_prompt | self.llm | StrOutputParser()
             self.log.info("DocumentAnalyzer initialized successfully.")
 
