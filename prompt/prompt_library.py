@@ -57,7 +57,7 @@ context_qa_prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-PROPMT_REGISTRY={
+PROMPT_REGISTRY={
     "document_analysis":document_analysis_prompt,
     "document_analysis_summary_prompt":document_analysis_summary_prompt,
     "document_comparison":document_comparison_prompt,  

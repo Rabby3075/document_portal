@@ -41,8 +41,8 @@ def test_conversational_rag_on_pdf(pdf_path: str, question: str):
 
 if __name__ == "__main__":
     try:
-        pdf_path = Path(r"E:\\Project\\Document Portal\\mine one\\data\\single_document_chat\\Group4-Research Paper.pdf")
-        question = "Whic models are used in here? Also who is the 1st author?"
+        pdf_path = Path(r"E:\\Project\\Document Portal\\mine one\\data\\single_document_chat\\NIPS-2017-attention-is-all-you-need-Paper.pdf")
+        question = "What is the significance of this attention mechanism? Can you please describe eloborately?"
         if not Path(pdf_path).exists():
             print(f"File not found: {pdf_path}")
             sys.exit(1)
