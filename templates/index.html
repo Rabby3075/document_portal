@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="/static/style.css" rel="stylesheet" />
+  <link href="../static/style.css" rel="stylesheet" />
 </head>
 <body>
   <header class="app-header">
@@ -209,8 +209,8 @@
       tbody.innerHTML = `<tr><td colspan="2" class="center">Comparing…</td></tr>`;
 
       const fd = new FormData();
-      fd.append("reference", ref); // <-- must be 'reference'
-      fd.append("actual", act);    // <-- must be 'actual'
+      fd.append("reference_file", ref);
+      fd.append("actual_file", act);
 
       const res = await fetch(`${API_BASE}/compare`, { method: "POST", body: fd });
       if (!res.ok) {
