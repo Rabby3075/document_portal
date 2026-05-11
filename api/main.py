@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from langchain_community.vectorstores import FAISS
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from src.data_ingestion.data_ingestion import DocumentHandler, DocumentComparator, ChatIngestor, FaissManager
 from src.document_analyzer.data_analysis import DocumentAnalyzer
 from src.document_compare.document_comparator import DocumentComparatorLLM
@@ -15,6 +16,10 @@ from src.document_chat.retrieval import DocumentConversationalRag
 BASE_DIR = Path(__file__).resolve().parent.parent
 FIASS_BASE = os.getenv("faiss_index", "faiss_index")
 Upload_Base = os.getenv("UPLOAD_BASE", "data")
+
+# In-memory chat history keyed by session_id. NOTE: cleared on server restart.
+# Swap for Redis/SQLite if persistence matters.
+SESSION_HISTORIES: Dict[str, List[BaseMessage]] = {}
 print(BASE_DIR)
 app = FastAPI(title="Document Portal API", version="1.0")
 app.mount(
@@ -119,7 +124,30 @@ async def chat_query(
         #initialize lcel-chain
         rag = DocumentConversationalRag(session_id=session_id,) #type:ignore
         rag.load_retriever_from_faiss(faiss_index_path)
-        response = rag.invoke(question, chat_history=[])
-        return {"answer": response, "session_id": session_id, "k": k, "use_session_dirs": use_session_dirs, "engine": "lcel-chain"} 
+
+        # Pull (or start) this session's running history, run the chain with it,
+        # then append the new user turn + answer so the next call sees them.
+        history_key = session_id or "_default"
+        history = SESSION_HISTORIES.setdefault(history_key, [])
+        response = rag.invoke(question, chat_history=history)
+        history.append(HumanMessage(content=question))
+        history.append(AIMessage(content=response))
+
+        return {
+            "answer": response,
+            "session_id": session_id,
+            "k": k,
+            "use_session_dirs": use_session_dirs,
+            "engine": "lcel-chain",
+            "turns": len(history) // 2,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/chat/reset")
+async def chat_reset(session_id: Optional[str] = Form(None)) -> Dict[str, Any]:
+    """Clear in-memory chat history for a session (FAISS index untouched)."""
+    history_key = session_id or "_default"
+    removed = SESSION_HISTORIES.pop(history_key, None) is not None
+    return {"session_id": session_id, "cleared": removed}
