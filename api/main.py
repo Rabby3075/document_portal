@@ -68,7 +68,7 @@ async def analyze_document(file: UploadFile = File(...)):
         result = document_analyzer.analyze_document(text)
         return JSONResponse(content=result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail="str(e)")
+        raise HTTPException(status_code=500, detail=f"{str(e)}")
 
 @app.post("/compare")
 async def compare_document(reference_file: UploadFile = File(...), actual_file: UploadFile = File(...)):

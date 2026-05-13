@@ -136,18 +136,20 @@ class DocumentComparator:
                 if not fobj.name.lower().endswith('.pdf') :
                     raise ValueError("Both uploaded files must be PDFs")
 
+                data = fobj.read() if hasattr(fobj, "read") else fobj.getbuffer()
+                if not data:
+                    raise ValueError(f"Uploaded file '{fobj.name}' is empty")
+                if not bytes(data[:4]).startswith(b"%PDF"):
+                    raise ValueError(f"Uploaded file '{fobj.name}' is not a valid PDF (missing %PDF header)")
                 with open(out, "wb") as f: #write the uploaded file to disk
-                    if hasattr(fobj, "read"):
-                        f.write(fobj.read())
-                    else:
-                        f.write(fobj.getbuffer())
-                self.log.info("PDF saved successfully", file = fobj.name, file_path=out, session_id = self.session_id)
+                    f.write(data)
+                self.log.info("PDF saved successfully", file=fobj.name, file_path=str(out), bytes=len(data), session_id=self.session_id)
             return reference_path, actual_path
 
             
 
         except Exception as e:
-            self.log.error("Failed to save uploaded files", error=str(e))
+            self.log.error("Failed to save uploaded files", error=f"{e}")
             raise DocumentPortalCustomException("Failed to save uploaded files", sys) from e
     
     def read_uploaded_file(self, file_path:Path)->str:
@@ -180,7 +182,7 @@ class DocumentComparator:
             self.log.info("Documents combined successfully", count = len(content_dict))
             return combined_text
         except Exception as e:
-            self.log.error("Failed to combine documents", error=str(e))
+            self.log.error("Failed to combine documents", error=f"{e}")
             raise DocumentPortalCustomException("Failed to combine documents", sys) from e
     def clean_old_session(self, keep_latest: int = 3):
         try:
@@ -195,7 +197,7 @@ class DocumentComparator:
                 self.log.info("Old session folder deleted", path=str(folder))
 
         except Exception as e:
-            self.log.error("Error cleaning old sessions", error=str(e))
+            self.log.error("Error cleaning old sessions", error=f"{e}")
             raise DocumentPortalCustomException("Error cleaning old sessions", sys)
     def delete_existing_files(self):
         try:
@@ -205,7 +207,7 @@ class DocumentComparator:
                         file.unlink()
                         self.log.info("Deleted existing file", directory=str(self.session_path), file=str(file))
         except Exception as e:
-            self.log.error("Failed to delete existing files", error=str(e))
+            self.log.error("Failed to delete existing files", error=f"{e}")
             raise DocumentPortalCustomException("Failed to delete existing files", sys) from e
 
 class ChatIngestor:
@@ -221,7 +223,7 @@ class ChatIngestor:
         
 
         except Exception as e:
-            self.log.error("Chat Ingestion Failed", error=str(e))
+            self.log.error("Chat Ingestion Failed", error=f"{e}")
             raise DocumentPortalCustomException("Failed to chat Ingestion", sys) from  e
     def _resolve_dir(self, base: Path):
         if self.use_session_dirs:
@@ -236,7 +238,7 @@ class ChatIngestor:
             self.log.info("Document split successfully", session_id=self.session_id, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
             return chunks
         except Exception as e:
-            self.log.error("Failed to splitt uploaded files", error=str(e))
+            self.log.error("Failed to splitt uploaded files", error=f"{e}")
             raise DocumentPortalCustomException("Failed to splitt uploaded files", sys) from  e
     def built_retriever(self, uploaded_files: Iterable, chunk_size: int = 1000, chunk_overlap: int = 200, k: int = 5):
         try:
@@ -258,5 +260,5 @@ class ChatIngestor:
             return vs.as_retriever(search_type="similarity", search_kwargs={"k": k})
 
         except Exception as e:
-            self.log.error("Failed to retrive uploaded files", error=str(e))
+            self.log.error("Failed to retrive uploaded files", error=f"{e}")
             raise DocumentPortalCustomException("Failed to retrive uploaded files", sys) from  e
